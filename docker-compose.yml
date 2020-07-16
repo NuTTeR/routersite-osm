@@ -1,0 +1,42 @@
+version: '3'
+services:
+  route:
+    build: ./route
+    restart: always
+    volumes:
+     - "./osm-data:/osm-data:z"
+    entrypoint: /bin/bash /entrypoint.sh
+    ports:
+     - "5000:5000"
+  search:
+    build: ./search
+    restart: always
+    volumes:
+     - "./osm-data/map.osm.pbf:/map.osm.pbf"
+     - "./osm-data/search/nominatim-tmp:/var/lib/postgresql/11/main:z"
+     - "./osm-data/search/photon:/app/photon_data:z"
+    entrypoint: /bin/bash /entrypoint.sh
+    ports:
+     - "5002:2322"
+    depends_on:
+     - route
+    environment:
+     WAIT_HOSTS: route:5000
+     WAIT_HOSTS_TIMEOUT: 999999999
+  map:
+    build: ./map
+    restart: always
+    volumes:
+     - "./osm-data/map.osm.pbf:/data.osm.pbf"
+     - "./osm-data/map/db:/var/lib/postgresql/10/main:z"
+     - "./osm-data/map/tiles:/var/lib/mod_tile:z"
+    entrypoint: /bin/bash /entrypoint.sh
+    ports:
+     - "5001:80"
+    depends_on:
+     - route
+     - search
+    environment:
+     OSM2PGSQL_EXTRA_ARGS: "--drop"
+     WAIT_HOSTS: route:5000, search:2322
+     WAIT_HOSTS_TIMEOUT: 999999999
